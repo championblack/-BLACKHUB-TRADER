@@ -22,10 +22,10 @@ function botStep(){
  const fast=ema(s.priceHistory,20),slow=ema(s.priceHistory,50),momentum=rsi(s.priceHistory,14),vol=atrProxy(s.priceHistory,14);
  if(fast===null||slow===null)return;
  let signal=null;
- if(s.previousFast!==null){
-  if(s.previousFast<=s.previousSlow&&fast>slow&&momentum>=55)signal="BUY";
-  else if(s.previousFast>=s.previousSlow&&fast<slow&&momentum<=45)signal="SELL";
- }
+ // Keep scanning continuously: use the current EMA trend plus RSI,
+ // not a one-time crossover event that can be missed while the bot is running.
+ if(fast>slow&&momentum>=55)signal="BUY";
+ else if(fast<slow&&momentum<=45)signal="SELL";
  s.previousFast=fast;s.previousSlow=slow;
  const botPositions=s.positions.filter(p=>p.source==="Bot-v2"&&p.symbol===s.symbol);
  if(botPositions.length){
@@ -55,7 +55,7 @@ function manualTrade(side){const size=Number($("size").value);if(!Number.isFinit
 $("symbol").onchange=e=>{if(s.bot){s.bot=false;s.botTradeIds=[];$("bot").textContent="START BOT";$("botState").textContent="BOT PAUSED"}s.symbol=e.target.value;seed();render()};
 $("buy").onclick=()=>manualTrade("BUY");$("sell").onclick=()=>manualTrade("SELL");
 $("positionRows").onclick=e=>{if(e.target.dataset.id){closePosition(e.target.dataset.id);render()}};
-$("bot").onclick=()=>{s.bot=!s.bot;$("bot").textContent=s.bot?"STOP BOT":"START BOT";$("bot").classList.toggle("stop",s.bot);$("botState").textContent=s.bot?"BOT RUNNING · PAPER ONLY":"BOT PAUSED";s.previousFast=null;s.previousSlow=null;s.botTradeIds=[];if(s.bot){$("feedback").textContent="Bot is waiting for a fresh 5/12 moving-average crossover. It opens five demo trades together."; $("signals").textContent="Waiting for crossover. Demo prices only."}else{$("feedback").textContent="Bot paused. Existing positions remain open."}};
+$("bot").onclick=()=>{s.bot=!s.bot;$("bot").textContent=s.bot?"STOP BOT":"START BOT";$("bot").classList.toggle("stop",s.bot);$("botState").textContent=s.bot?"BOT RUNNING · PAPER ONLY":"BOT PAUSED";s.previousFast=null;s.previousSlow=null;s.botTradeIds=[];if(s.bot){$("feedback").textContent="Bot is running continuously. It will scan for EMA 20/50 trend + RSI conditions and automatically look for the next paper entry after a position closes."; $("signals").textContent="Scanning continuously · one open bot position at a time · demo prices only."}else{$("feedback").textContent="Bot paused. Existing positions remain open."}};
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));["positions","history","signals"].forEach(id=>$(id).hidden=id!==b.dataset.tab)});
 document.querySelectorAll("[data-tf]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-tf]").forEach(x=>x.classList.toggle("active",x===b))});
 setInterval(()=>{for(const k of Object.keys(s.prices))s.prices[k]+=(Math.random()-.49)*(k==="XAUUSD"?2:85);const last=s.candles[s.candles.length-1];last.c=s.prices[s.symbol];last.h=Math.max(last.h,last.c);last.l=Math.min(last.l,last.c);s.priceHistory.push(s.prices[s.symbol]);if(s.priceHistory.length>100)s.priceHistory.shift();if(Math.random()>.65){const o=last.c;s.candles.push({o,c:o,h:o+.5,l:o-.5});s.candles.shift()}botStep();render();draw()},500);
